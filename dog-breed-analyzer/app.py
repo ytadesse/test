@@ -33,7 +33,7 @@ Analyze the uploaded photo of a dog and respond with a JSON object (no markdown 
     "history": "<2-3 sentence history of how this breed came to be>"
   },
   "fun_facts": [
-    "<10 fun, surprising, or delightful facts about this breed — number them 1-10>"
+    "<5 fun, surprising, or delightful facts about this breed — number them 1-5>"
   ],
   "famous_owners": [
     {"name": "<Celebrity / historical figure>", "dog_name": "<Their dog's name if known, else null>", "note": "<One-sentence fun detail>"}
@@ -54,7 +54,7 @@ Analyze the uploaded photo of a dog and respond with a JSON object (no markdown 
 
 Rules:
 - Return ONLY valid JSON. No extra text, no markdown code fences.
-- The fun_facts array must have exactly 10 items.
+- The fun_facts array must have exactly 5 items.
 - famous_owners should have 3-5 entries.
 - care_tips should have 3-4 entries.
 - Be entertaining but accurate.
