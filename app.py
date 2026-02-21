@@ -69,7 +69,7 @@ def analyze():
 
     try:
         genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         response = model.generate_content([PROMPT, image])
     except Exception as e:
         return jsonify({"error": f"Gemini API error: {str(e)}"}), 500
