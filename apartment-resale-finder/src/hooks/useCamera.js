@@ -41,6 +41,8 @@ export function useCamera() {
     if (!videoRef.current || !canvasRef.current) return null;
 
     const video = videoRef.current;
+    if (!video.videoWidth || !video.videoHeight) return null;
+
     const canvas = canvasRef.current;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
