@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dog Breed Analyzer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            bark: { 50: '#fdf8f0', 100: '#f9edda', 200: '#f2d7b0', 300: '#e9bb7e', 400: '#df9a4e', 500: '#d6802e', 600: '#c76823', 700: '#a5501f', 800: '#854120', 900: '#6c361d' },
+          },
+          animation: {
+            'paw-bounce': 'pawBounce 0.6s ease-in-out infinite alternate',
+            'fade-up': 'fadeUp 0.5s ease-out forwards',
+          },
+          keyframes: {
+            pawBounce: { '0%': { transform: 'translateY(0) rotate(-10deg)' }, '100%': { transform: 'translateY(-8px) rotate(10deg)' } },
+            fadeUp: { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+          },
+        },
+      },
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    .paw-rating { letter-spacing: 2px; }
+    .upload-zone.dragover { border-color: #d6802e; background-color: #fdf8f0; }
+    .glass { background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-bark-50 via-white to-amber-50 font-sans text-gray-800">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-50 glass border-b border-bark-100">
+    <div class="max-w-5xl mx-auto flex items-center justify-between px-6 py-4">
+      <div class="flex items-center gap-3">
+        <span class="text-3xl">&#128062;</span>
+        <h1 class="text-2xl font-extrabold tracking-tight text-bark-700">Dog Breed Analyzer</h1>
+      </div>
+      <span class="hidden sm:inline text-sm text-bark-400 font-medium">Powered by Gemini AI</span>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-6 py-10 space-y-10">
+
+    <!-- Upload Section -->
+    <section id="upload-section" class="bg-white rounded-2xl shadow-lg border border-bark-100 p-8">
+      <h2 class="text-xl font-bold text-bark-800 mb-2">Upload a Dog Photo</h2>
+      <p class="text-sm text-gray-500 mb-6">Snap a pic or drag &amp; drop. We'll identify the breed and tell you everything about it.</p>
+
+      <div id="drop-zone" class="upload-zone relative flex flex-col items-center justify-center border-2 border-dashed border-bark-200 rounded-xl p-10 cursor-pointer hover:border-bark-400 transition-colors">
+        <input type="file" id="file-input" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" />
+        <!-- Preview (hidden initially) -->
+        <img id="preview-img" class="hidden max-h-64 rounded-lg mb-4 shadow" alt="preview" />
+        <!-- Placeholder -->
+        <div id="placeholder" class="flex flex-col items-center text-center">
+          <svg class="w-12 h-12 text-bark-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 16l4-4a3 3 0 014.24 0L15 16m-2-2l1.58-1.58a3 3 0 014.24 0L21 14M3 6h18M3 6a2 2 0 00-2 2v10a2 2 0 002 2h18a2 2 0 002-2V8a2 2 0 00-2-2"/></svg>
+          <p class="font-semibold text-bark-600">Drag &amp; drop your image here</p>
+          <p class="text-xs text-gray-400 mt-1">or click to browse &middot; JPG, PNG, WebP, GIF &middot; Max 16 MB</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4 mt-6">
+        <button id="analyze-btn" disabled class="px-8 py-3 bg-bark-500 hover:bg-bark-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow transition-all">
+          Analyze Breed
+        </button>
+        <button id="clear-btn" class="hidden px-5 py-3 border border-bark-200 text-bark-600 font-semibold rounded-xl hover:bg-bark-50 transition">
+          Clear
+        </button>
+      </div>
+    </section>
+
+    <!-- Loading -->
+    <section id="loading-section" class="hidden text-center py-16">
+      <div class="inline-flex items-center gap-3">
+        <span class="text-4xl animate-paw-bounce">&#128062;</span>
+        <span class="text-lg font-semibold text-bark-600">Sniffing out the breed&hellip;</span>
+      </div>
+      <p class="text-sm text-gray-400 mt-2">This may take a moment while our AI inspects every whisker.</p>
+    </section>
+
+    <!-- Error -->
+    <section id="error-section" class="hidden bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
+      <p class="text-red-700 font-semibold" id="error-message"></p>
+      <button onclick="document.getElementById('error-section').classList.add('hidden')" class="mt-3 text-sm text-red-500 underline">Dismiss</button>
+    </section>
+
+    <!-- Results -->
+    <section id="results-section" class="hidden space-y-8">
+
+      <!-- Breed Header -->
+      <div class="bg-white rounded-2xl shadow-lg border border-bark-100 p-8 animate-fade-up" style="animation-delay:0.05s">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <p class="text-sm font-medium text-bark-400 uppercase tracking-wider">Identified Breed</p>
+            <h2 id="res-breed" class="text-3xl font-black text-bark-800 mt-1"></h2>
+            <p id="res-tagline" class="text-bark-500 italic mt-1"></p>
+          </div>
+          <span id="res-confidence" class="self-start inline-block px-4 py-1.5 rounded-full text-sm font-bold"></span>
+        </div>
+      </div>
+
+      <!-- Origin -->
+      <div class="bg-white rounded-2xl shadow-lg border border-bark-100 p-8 animate-fade-up" style="animation-delay:0.1s">
+        <h3 class="text-lg font-bold text-bark-700 flex items-center gap-2"><span>&#127758;</span> Origin</h3>
+        <p class="mt-1 text-sm text-bark-400 font-semibold" id="res-country"></p>
+        <p class="mt-2 text-gray-600 leading-relaxed" id="res-history"></p>
+      </div>
+
+      <!-- Temperament -->
+      <div class="bg-white rounded-2xl shadow-lg border border-bark-100 p-8 animate-fade-up" style="animation-delay:0.15s">
+        <h3 class="text-lg font-bold text-bark-700 flex items-center gap-2"><span>&#128150;</span> Temperament</h3>
+        <div id="res-temperament" class="mt-3 flex flex-wrap gap-2"></div>
+      </div>
+
+      <!-- 10 Fun Facts -->
+      <div class="bg-white rounded-2xl shadow-lg border border-bark-100 p-8 animate-fade-up" style="animation-delay:0.2s">
+        <h3 class="text-lg font-bold text-bark-700 flex items-center gap-2"><span>&#127775;</span> 10 Fun Facts</h3>
+        <ol id="res-facts" class="mt-4 space-y-3 list-decimal list-inside text-gray-700"></ol>
+      </div>
+
+      <!-- Famous Owners -->
+      <div class="bg-white rounded-2xl shadow-lg border border-bark-100 p-8 animate-fade-up" style="animation-delay:0.25s">
+        <h3 class="text-lg font-bold text-bark-700 flex items-center gap-2"><span>&#11088;</span> Famous Owners</h3>
+        <div id="res-famous" class="mt-4 grid gap-4 sm:grid-cols-2"></div>
+      </div>
+
+      <!-- Pop Culture -->
+      <div class="bg-white rounded-2xl shadow-lg border border-bark-100 p-8 animate-fade-up" style="animation-delay:0.3s">
+        <h3 class="text-lg font-bold text-bark-700 flex items-center gap-2"><span>&#127916;</span> Pop Culture</h3>
+        <p id="res-popculture" class="mt-2 text-gray-600 leading-relaxed"></p>
+      </div>
+
+      <!-- Did You Know -->
+      <div class="bg-gradient-to-r from-bark-500 to-amber-500 rounded-2xl shadow-lg p-8 text-white animate-fade-up" style="animation-delay:0.35s">
+        <h3 class="text-lg font-bold flex items-center gap-2"><span>&#129488;</span> Did You Know?</h3>
+        <p id="res-dyk" class="mt-2 text-lg leading-relaxed"></p>
+      </div>
+
+      <!-- Compatibility -->
+      <div class="bg-white rounded-2xl shadow-lg border border-bark-100 p-8 animate-fade-up" style="animation-delay:0.4s">
+        <h3 class="text-lg font-bold text-bark-700 flex items-center gap-2"><span>&#128200;</span> Compatibility Scores</h3>
+        <div id="res-compat" class="mt-4 grid gap-4 sm:grid-cols-2"></div>
+      </div>
+
+      <!-- Care Tips -->
+      <div class="bg-white rounded-2xl shadow-lg border border-bark-100 p-8 animate-fade-up" style="animation-delay:0.45s">
+        <h3 class="text-lg font-bold text-bark-700 flex items-center gap-2"><span>&#129658;</span> Care Tips</h3>
+        <ul id="res-care" class="mt-4 space-y-2 list-disc list-inside text-gray-700"></ul>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="text-center py-8 text-xs text-gray-400">
+    Built with Flask, Tailwind CSS &amp; Google Gemini AI &middot; Upload responsibly &#128054;
+  </footer>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
