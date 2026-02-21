@@ -1,175 +1,196 @@
-(() => {
-  const dropZone     = document.getElementById("drop-zone");
-  const fileInput    = document.getElementById("file-input");
-  const previewImg   = document.getElementById("preview-img");
-  const placeholder  = document.getElementById("placeholder");
-  const analyzeBtn   = document.getElementById("analyze-btn");
-  const clearBtn     = document.getElementById("clear-btn");
-  const loadingSec   = document.getElementById("loading-section");
-  const errorSec     = document.getElementById("error-section");
-  const errorMsg     = document.getElementById("error-message");
-  const resultsSec   = document.getElementById("results-section");
+const dropZone = document.getElementById("drop-zone");
+const fileInput = document.getElementById("file-input");
+const browseLink = document.getElementById("browse-link");
+const previewWrap = document.getElementById("preview-wrap");
+const previewImg = document.getElementById("preview-img");
+const changeBtn = document.getElementById("change-btn");
+const analyzeBtn = document.getElementById("analyze-btn");
+const loader = document.getElementById("loader");
+const loaderMsg = document.getElementById("loader-msg");
+const results = document.getElementById("results");
+const errorBox = document.getElementById("error-box");
+const uploadSec = document.getElementById("upload-section");
 
-  let selectedFile = null;
+let selectedFile = null;
 
-  /* ---------- Drag & Drop ---------- */
-  ["dragenter", "dragover"].forEach(evt =>
-    dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.add("dragover"); })
-  );
-  ["dragleave", "drop"].forEach(evt =>
-    dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.remove("dragover"); })
-  );
-  dropZone.addEventListener("drop", e => {
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
-  });
+const loadingQuips = [
+  "Consulting the ancient scrolls of dog breeds\u2026",
+  "Sniffing for clues\u2026",
+  "Asking Gemini to fetch the answer\u2026",
+  "Cross-referencing 400 breeds\u2026",
+  "Checking paw prints\u2026",
+  "Almost there \u2014 good boy!",
+];
 
-  fileInput.addEventListener("change", () => {
-    if (fileInput.files[0]) handleFile(fileInput.files[0]);
-  });
+let quipInterval;
 
-  /* ---------- File handling ---------- */
-  function handleFile(file) {
-    selectedFile = file;
-    const reader = new FileReader();
-    reader.onload = e => {
-      previewImg.src = e.target.result;
-      previewImg.classList.remove("hidden");
-      placeholder.classList.add("hidden");
-    };
-    reader.readAsDataURL(file);
-    analyzeBtn.disabled = false;
-    clearBtn.classList.remove("hidden");
-    resultsSec.classList.add("hidden");
-    errorSec.classList.add("hidden");
-  }
+function showPreview(file) {
+  selectedFile = file;
+  const url = URL.createObjectURL(file);
+  previewImg.src = url;
+  previewWrap.style.display = "block";
+  dropZone.style.display = "none";
+  analyzeBtn.style.display = "block";
+  errorBox.style.display = "none";
+}
 
-  clearBtn.addEventListener("click", () => {
-    selectedFile = null;
-    fileInput.value = "";
-    previewImg.classList.add("hidden");
-    placeholder.classList.remove("hidden");
-    analyzeBtn.disabled = true;
-    clearBtn.classList.add("hidden");
-    resultsSec.classList.add("hidden");
-    errorSec.classList.add("hidden");
-  });
+function resetToUpload() {
+  selectedFile = null;
+  previewWrap.style.display = "none";
+  dropZone.style.display = "block";
+  analyzeBtn.style.display = "none";
+  results.style.display = "none";
+  loader.style.display = "none";
+  uploadSec.style.display = "block";
+  errorBox.style.display = "none";
+  fileInput.value = "";
+}
 
-  /* ---------- Analyze ---------- */
-  analyzeBtn.addEventListener("click", async () => {
-    if (!selectedFile) return;
+browseLink.addEventListener("click", () => fileInput.click());
+dropZone.addEventListener("click", () => fileInput.click());
 
-    loadingSec.classList.remove("hidden");
-    resultsSec.classList.add("hidden");
-    errorSec.classList.add("hidden");
-    analyzeBtn.disabled = true;
+fileInput.addEventListener("change", () => {
+  if (fileInput.files[0]) showPreview(fileInput.files[0]);
+});
 
-    const formData = new FormData();
-    formData.append("image", selectedFile);
+dropZone.addEventListener("dragover", e => {
+  e.preventDefault();
+  dropZone.classList.add("dragging");
+});
 
-    try {
-      const res = await fetch("/analyze", { method: "POST", body: formData });
-      const data = await res.json();
+dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragging"));
 
-      if (!res.ok) throw new Error(data.error || "Something went wrong");
-      renderResults(data);
-    } catch (err) {
-      errorMsg.textContent = err.message;
-      errorSec.classList.remove("hidden");
-    } finally {
-      loadingSec.classList.add("hidden");
-      analyzeBtn.disabled = false;
+dropZone.addEventListener("drop", e => {
+  e.preventDefault();
+  dropZone.classList.remove("dragging");
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith("image/")) showPreview(file);
+});
+
+changeBtn.addEventListener("click", resetToUpload);
+document.getElementById("retry-btn").addEventListener("click", resetToUpload);
+
+analyzeBtn.addEventListener("click", async () => {
+  if (!selectedFile) return;
+
+  uploadSec.style.display = "none";
+  results.style.display = "none";
+  loader.style.display = "block";
+  errorBox.style.display = "none";
+  analyzeBtn.disabled = true;
+
+  let q = 0;
+  loaderMsg.textContent = loadingQuips[q];
+  quipInterval = setInterval(() => {
+    q = (q + 1) % loadingQuips.length;
+    loaderMsg.textContent = loadingQuips[q];
+  }, 2200);
+
+  const formData = new FormData();
+  formData.append("image", selectedFile);
+
+  try {
+    const res = await fetch("/analyze", { method: "POST", body: formData });
+    const data = await res.json();
+    clearInterval(quipInterval);
+
+    if (!res.ok || data.error) {
+      showError(data.error || "Something went wrong.");
+      return;
     }
-  });
 
-  /* ---------- Render ---------- */
-  function renderResults(d) {
-    // Breed header
-    document.getElementById("res-breed").textContent   = d.breed || "Unknown";
-    document.getElementById("res-tagline").textContent  = d.tagline || "";
+    renderResults(data);
+  } catch (err) {
+    clearInterval(quipInterval);
+    showError("Network error \u2014 please try again.");
+  } finally {
+    analyzeBtn.disabled = false;
+  }
+});
 
-    const confEl = document.getElementById("res-confidence");
-    const conf = (d.confidence || "").toLowerCase();
-    confEl.textContent = d.confidence || "";
-    confEl.className = "self-start inline-block px-4 py-1.5 rounded-full text-sm font-bold ";
-    if (conf === "high")        confEl.className += "bg-green-100 text-green-700";
-    else if (conf === "medium") confEl.className += "bg-yellow-100 text-yellow-700";
-    else                        confEl.className += "bg-red-100 text-red-700";
+function showError(msg) {
+  loader.style.display = "none";
+  uploadSec.style.display = "block";
+  errorBox.textContent = "\u26a0\ufe0f " + msg;
+  errorBox.style.display = "block";
+  previewWrap.style.display = "block";
+  dropZone.style.display = "none";
+  analyzeBtn.style.display = "block";
+}
 
-    // Origin
-    document.getElementById("res-country").textContent = d.origin?.country || "";
-    document.getElementById("res-history").textContent  = d.origin?.history || "";
+function esc(str) {
+  const el = document.createElement("div");
+  el.textContent = str || "";
+  return el.innerHTML;
+}
 
-    // Temperament chips
-    const tempEl = document.getElementById("res-temperament");
-    tempEl.innerHTML = "";
-    (d.temperament || []).forEach(t => {
-      const chip = document.createElement("span");
-      chip.className = "px-3 py-1 rounded-full bg-bark-100 text-bark-700 text-sm font-medium";
-      chip.textContent = t;
-      tempEl.appendChild(chip);
-    });
+function renderResults(d) {
+  loader.style.display = "none";
 
-    // Fun facts
-    const factsEl = document.getElementById("res-facts");
-    factsEl.innerHTML = "";
-    (d.fun_facts || []).forEach(f => {
-      const li = document.createElement("li");
-      li.className = "leading-relaxed";
-      li.textContent = f;
-      factsEl.appendChild(li);
-    });
+  // Confidence badge
+  const confEl = document.getElementById("confidence-badge");
+  confEl.textContent = (d.confidence || "high").toUpperCase() + " CONFIDENCE";
+  confEl.className = "confidence-badge conf-" + (d.confidence || "high").toLowerCase();
 
-    // Famous owners
-    const famousEl = document.getElementById("res-famous");
-    famousEl.innerHTML = "";
-    (d.famous_owners || []).forEach(o => {
-      const card = document.createElement("div");
-      card.className = "bg-bark-50 rounded-xl p-4";
-      card.innerHTML = `
-        <p class="font-bold text-bark-800">${esc(o.name)}</p>
-        ${o.dog_name ? `<p class="text-xs text-bark-400 mt-0.5">Dog: ${esc(o.dog_name)}</p>` : ""}
-        <p class="text-sm text-gray-600 mt-1">${esc(o.note)}</p>
-      `;
-      famousEl.appendChild(card);
-    });
+  // Breed name & tagline
+  document.getElementById("breed-name").textContent = d.breed || "Unknown";
+  document.getElementById("breed-tagline").textContent = d.tagline || "";
 
-    // Pop culture
-    document.getElementById("res-popculture").textContent = d.pop_culture || "";
-
-    // Did you know
-    document.getElementById("res-dyk").textContent = d.did_you_know || "";
-
-    // Compatibility
-    const compatEl = document.getElementById("res-compat");
-    compatEl.innerHTML = "";
-    const labels = { families: "Families", apartments: "Apartments", active_owners: "Active Owners", first_time_owners: "First-Time Owners" };
-    Object.entries(d.compatibility_score || {}).forEach(([key, val]) => {
-      const num = parseInt(val) || 0;
-      const paws = "&#128062;".repeat(num) + '<span class="opacity-20">' + "&#128062;".repeat(5 - num) + "</span>";
-      const row = document.createElement("div");
-      row.className = "flex items-center justify-between bg-bark-50 rounded-xl px-4 py-3";
-      row.innerHTML = `<span class="font-semibold text-bark-700 text-sm">${labels[key] || key}</span><span class="paw-rating text-lg">${paws}</span>`;
-      compatEl.appendChild(row);
-    });
-
-    // Care tips
-    const careEl = document.getElementById("res-care");
-    careEl.innerHTML = "";
-    (d.care_tips || []).forEach(tip => {
-      const li = document.createElement("li");
-      li.className = "leading-relaxed";
-      li.textContent = tip;
-      careEl.appendChild(li);
-    });
-
-    resultsSec.classList.remove("hidden");
-    resultsSec.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Celebrity lookalike
+  if (d.celeb_lookalike) {
+    document.getElementById("lookalike-text").textContent = "Personality twin: " + d.celeb_lookalike;
+    document.getElementById("lookalike-chip").style.display = "inline-flex";
+  } else {
+    document.getElementById("lookalike-chip").style.display = "none";
   }
 
-  function esc(str) {
-    const d = document.createElement("div");
-    d.textContent = str || "";
-    return d.innerHTML;
-  }
-})();
+  // Origin
+  const o = d.origin || {};
+  document.getElementById("origin-country").textContent = (o.country || "") + (o.country ? " \ud83c\udf0d" : "");
+  document.getElementById("origin-era").textContent = o.era || "";
+  document.getElementById("origin-story").textContent = o.story || "";
+
+  // Personality traits
+  const traitsEl = document.getElementById("traits");
+  traitsEl.innerHTML = (d.personality_traits || [])
+    .map(t => '<span class="trait-pill">' + esc(t) + "</span>").join("");
+
+  // Ratings
+  const ratingsEl = document.getElementById("ratings");
+  const ratingMap = [
+    { key: "energy", label: "Energy", emoji: "\u26a1" },
+    { key: "friendliness", label: "Friendliness", emoji: "\ud83e\udd1d" },
+    { key: "trainability", label: "Trainability", emoji: "\ud83c\udf93" },
+    { key: "fluffiness", label: "Fluffiness", emoji: "\u2601\ufe0f" },
+  ];
+
+  ratingsEl.innerHTML = ratingMap.map(function (r) {
+    const val = (d.ratings || {})[r.key] || 5;
+    return '<div class="rating-row">' +
+      '<div class="rating-label"><span>' + r.emoji + " " + r.label + "</span><span>" + val + "/10</span></div>" +
+      '<div class="bar-track"><div class="bar-fill" data-width="' + (val * 10) + '"></div></div>' +
+      "</div>";
+  }).join("");
+
+  // Fun facts
+  const factsEl = document.getElementById("facts-grid");
+  factsEl.innerHTML = (d.fun_facts || []).map(function (f, i) {
+    return '<div class="fact-card"><div class="fact-num">' + (i + 1) + '</div><div class="fact-text">' + esc(f) + "</div></div>";
+  }).join("");
+
+  // Famous owners
+  const ownersEl = document.getElementById("owners-grid");
+  ownersEl.innerHTML = (d.famous_owners || []).map(function (o) {
+    return '<div class="owner-card"><div class="owner-name">\ud83d\udc51 ' + esc(o.name) + '</div><div class="owner-note">' + esc(o.note) + "</div></div>";
+  }).join("");
+
+  results.style.display = "block";
+  results.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  // Animate rating bars after a brief delay
+  setTimeout(function () {
+    document.querySelectorAll(".bar-fill").forEach(function (bar) {
+      bar.style.width = bar.dataset.width + "%";
+    });
+  }, 120);
+}

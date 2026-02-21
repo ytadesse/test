@@ -1,5 +1,4 @@
 import os
-import base64
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -26,37 +25,34 @@ Analyze the uploaded photo of a dog and respond with a JSON object (no markdown 
 
 {
   "breed": "<Best guess at the breed or mix>",
-  "confidence": "<Your confidence: High / Medium / Low>",
+  "confidence": "<high, medium, or low>",
   "tagline": "<A witty one-liner about this breed>",
+  "celeb_lookalike": "<A celebrity whose personality matches this breed>",
   "origin": {
     "country": "<Country or region of origin>",
-    "history": "<2-3 sentence history of how this breed came to be>"
+    "era": "<Era or century the breed emerged, e.g. 19th Century>",
+    "story": "<2-3 sentence origin story of how this breed came to be>"
+  },
+  "personality_traits": ["<trait1>", "<trait2>", "<trait3>", "<trait4>", "<trait5>"],
+  "ratings": {
+    "energy": <1-10 integer>,
+    "friendliness": <1-10 integer>,
+    "trainability": <1-10 integer>,
+    "fluffiness": <1-10 integer>
   },
   "fun_facts": [
-    "<5 fun, surprising, or delightful facts about this breed — number them 1-5>"
+    "<5 fun, surprising, or delightful facts about this breed>"
   ],
   "famous_owners": [
-    {"name": "<Celebrity / historical figure>", "dog_name": "<Their dog's name if known, else null>", "note": "<One-sentence fun detail>"}
-  ],
-  "temperament": ["<trait1>", "<trait2>", "<trait3>", "<trait4>", "<trait5>"],
-  "did_you_know": "<One mind-blowing bonus fact that most people have never heard>",
-  "care_tips": [
-    "<3-4 short practical care tips for this breed>"
-  ],
-  "pop_culture": "<A sentence about this breed's appearances in movies, TV, books, or memes>",
-  "compatibility_score": {
-    "families": "<1-5 paw rating>",
-    "apartments": "<1-5 paw rating>",
-    "active_owners": "<1-5 paw rating>",
-    "first_time_owners": "<1-5 paw rating>"
-  }
+    {"name": "<Celebrity / historical figure>", "note": "<One-sentence fun detail>"}
+  ]
 }
 
 Rules:
 - Return ONLY valid JSON. No extra text, no markdown code fences.
 - The fun_facts array must have exactly 5 items.
 - famous_owners should have 3-5 entries.
-- care_tips should have 3-4 entries.
+- ratings values must be integers from 1 to 10.
 - Be entertaining but accurate.
 - If the image is not a dog, set breed to "Not a dog!" and fill the rest with humorous placeholders.
 """
