@@ -1,0 +1,5 @@
+[project]
+name = "dog-breed-analyzer"
+
+[nixpacks]
+providers = ["python"]
